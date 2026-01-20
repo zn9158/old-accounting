@@ -24,6 +24,11 @@ app.get('/', (req, res) => {
 });
 
 // Start Server
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server is running on http://0.0.0.0:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server is running on http://0.0.0.0:${PORT}`);
+    });
+}
+
+// Vercel Serverless requires exporting the app
+module.exports = app;
