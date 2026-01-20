@@ -1,4 +1,5 @@
 {
-    "build_command": "npm install",
-    "start_command": "npm start"
+    "build_command": "npm install --production",
+    "start_command": "node index.js",
+    "node_version": "18"
 }
