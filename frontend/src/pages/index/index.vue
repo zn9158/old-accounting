@@ -167,29 +167,12 @@ const goToHistory = () => {
 };
 
 const handleLogout = () => {
-  // H5 环境使用原生 confirm
-  // #ifdef H5
-  if (confirm('确定要退出登录吗？')) {
-    uni.removeStorageSync('token');
-    uni.removeStorageSync('userInfo');
+  uni.removeStorageSync('token');
+  uni.removeStorageSync('userInfo');
+  uni.showToast({ title: '已退出登录', icon: 'success', duration: 1500 });
+  setTimeout(() => {
     uni.reLaunch({ url: '/pages/login/login' });
-  }
-  // #endif
-  
-  // 小程序环境使用 uni.showModal
-  // #ifndef H5
-  uni.showModal({
-    title: '提示',
-    content: '确定要退出登录吗？',
-    success: (res) => {
-      if (res.confirm) {
-        uni.removeStorageSync('token');
-        uni.removeStorageSync('userInfo');
-        uni.reLaunch({ url: '/pages/login/login' });
-      }
-    }
-  });
-  // #endif
+  }, 1500);
 };
 
 // Lifecycle

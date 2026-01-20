@@ -88,21 +88,47 @@ exports.getGoldPrice = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('获取金价失败', error.message);
-        // 降级策略: 如果有缓存用缓存，否则用模拟数据
+        console.error('新浪财经获取金价失败', error.message);
+
+        // 备用方案1: 尝试金十数据
+        try {
+            const jin10Response = await axios.get('https://api.jin10.com/data_center/market/au9999', {
+                timeout: 3000
+            });
+            if (jin10Response.data && jin10Response.data.values && jin10Response.data.values.length > 0) {
+                const latestPrice = jin10Response.data.values[0][1]; // 获取最新价格
+                goldPriceCache = {
+                    price: parseFloat(latestPrice).toFixed(2),
+                    time: now,
+                    source: '金十数据'
+                };
+                return res.json({
+                    code: 200,
+                    data: {
+                        price: goldPriceCache.price,
+                        source: goldPriceCache.source,
+                        updateTime: new Date(goldPriceCache.time)
+                    }
+                });
+            }
+        } catch (jin10Error) {
+            console.error('金十数据获取失败', jin10Error.message);
+        }
+
+        // 备用方案2: 使用缓存数据
         if (goldPriceCache.price > 0) {
             return res.json({
                 code: 200,
                 data: {
                     price: goldPriceCache.price,
-                    source: goldPriceCache.source,
+                    source: goldPriceCache.source + ' (缓存)',
                     updateTime: new Date(goldPriceCache.time),
                     warning: '接口异常，使用缓存数据'
                 }
             });
         }
 
-        // 实在不行，模拟一个
+        // 最后降级: 使用模拟数据
         const mockPrice = (480 + Math.random() * 10).toFixed(2);
         res.json({
             code: 200,
