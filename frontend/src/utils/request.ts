@@ -46,6 +46,13 @@ const request = <T = any>(options: RequestOptions): Promise<T> => {
                         url: '/pages/login/login'
                     });
                     reject(res.data);
+                } else if (res.statusCode === 404) {
+                    // 404 错误（如用户不存在）
+                    uni.showToast({
+                        title: res.data.message || '请求的资源不存在',
+                        icon: 'none'
+                    });
+                    reject(res.data);
                 } else {
                     uni.showToast({
                         title: res.data.message || '服务器错误',

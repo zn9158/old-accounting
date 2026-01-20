@@ -4,7 +4,10 @@
     <view class="asset-card">
       <view class="card-header">
         <text class="card-title">持有总资产 (元)</text>
-        <view class="eye-icon">👁</view>
+        <view class="header-actions">
+          <view class="eye-icon">👁</view>
+          <text class="logout-btn" @click="handleLogout">退出</text>
+        </view>
       </view>
       <view class="total-assets">
         <text class="currency">¥</text>
@@ -18,8 +21,8 @@
         <view class="line"></view>
         <view class="detail-item">
           <text class="label">累计收益</text>
-          <text class="value" :class="{ 'profit': totalProfit > 0, 'loss': totalProfit < 0 }">
-            {{ totalProfit > 0 ? '+' : '' }}{{ totalProfit }}
+          <text class="value" :class="{ 'profit': parseFloat(totalProfit) > 0, 'loss': parseFloat(totalProfit) < 0 }">
+            {{ parseFloat(totalProfit) > 0 ? '+' : '' }}{{ totalProfit }}
           </text>
         </view>
       </view>
@@ -163,6 +166,20 @@ const goToHistory = () => {
   uni.showToast({ title: '更多记录页面待开发', icon: 'none' });
 };
 
+const handleLogout = () => {
+  uni.showModal({
+    title: '提示',
+    content: '确定要退出登录吗？',
+    success: (res) => {
+      if (res.confirm) {
+        uni.removeStorageSync('token');
+        uni.removeStorageSync('userInfo');
+        uni.reLaunch({ url: '/pages/login/login' });
+      }
+    }
+  });
+};
+
 // Lifecycle
 onMounted(() => {
   fetchGoldPrice();
@@ -237,8 +254,28 @@ $gradient-black: linear-gradient(135deg, #2C2C2C 0%, #1A1A1A 100%);
     opacity: 0.8;
     color: #E0E0E0;
   }
+  
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
   .eye-icon {
     font-size: 16px;
+  }
+  
+  .logout-btn {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 4px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    transition: all 0.2s;
+    
+    &:active {
+      background: rgba(255, 255, 255, 0.1);
+    }
   }
 }
 

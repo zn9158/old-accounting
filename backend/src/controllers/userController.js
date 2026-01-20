@@ -48,21 +48,26 @@ exports.login = async (req, res) => {
         let user = null;
 
         if (type === 'wechat') {
-            // 微信登录逻辑 (简化版，假设前端传来了openid)
-            // 实际上应该前端传code，后端换openid
+            // 微信登录逻辑
             const [rows] = await db.query('SELECT * FROM users WHERE openid = ?', [openid]);
             user = rows[0];
+            if (!user) {
+                return res.status(404).json({ code: 404, message: '用户不存在，请先注册' });
+            }
         } else {
             // 账号密码登录
             const [rows] = await db.query('SELECT * FROM users WHERE phone = ?', [phone]);
             user = rows[0];
-            if (!user || user.password !== md5(password)) {
-                return res.status(401).json({ code: 401, message: '账号或密码错误' });
-            }
-        }
 
-        if (!user) {
-            return res.status(404).json({ code: 404, message: '用户不存在' });
+            // 用户不存在
+            if (!user) {
+                return res.status(404).json({ code: 404, message: '该手机号未注册，请先注册' });
+            }
+
+            // 密码错误
+            if (user.password !== md5(password)) {
+                return res.status(401).json({ code: 401, message: '密码错误，请重试' });
+            }
         }
 
         // 生成 Token
