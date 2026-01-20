@@ -1,5 +1,12 @@
 {
     "buildCommand": "npm run build:h5",
     "outputDirectory": "dist/build/h5",
-    "installCommand": "npm install"
+    "installCommand": "npm install",
+    "framework": null,
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
 }
