@@ -4,10 +4,7 @@
     <view class="asset-card">
       <view class="card-header">
         <text class="card-title">持有总资产 (元)</text>
-        <view class="header-actions">
-          <view class="eye-icon">👁</view>
-          <text class="logout-btn" @click="handleLogout">退出</text>
-        </view>
+        <button class="logout-btn" @click="handleLogout">退出</button>
       </view>
       <view class="total-assets">
         <text class="currency">¥</text>
@@ -262,14 +259,20 @@ $gradient-black: linear-gradient(135deg, #2C2C2C 0%, #1A1A1A 100%);
   
   .logout-btn {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.7);
-    padding: 4px 12px;
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.15);
+    padding: 6px 16px;
     border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
-    transition: all 0.2s;
+    border-radius: 16px;
+    line-height: 1;
+    
+    &::after {
+      border: none;
+    }
     
     &:active {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.25);
+      transform: scale(0.95);
     }
   }
 }
