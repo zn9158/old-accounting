@@ -6,6 +6,7 @@ const PORT = process.env.PORT || 3000;
 
 const userRoutes = require('./src/routes/userRoutes');
 const goldRecordRoutes = require('./src/routes/goldRecordRoutes');
+const marketRoutes = require('./src/routes/marketRoutes');
 
 // Middleware
 app.use(cors());
@@ -16,6 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/users', userRoutes);
 app.use('/api/gold-records', goldRecordRoutes);
 app.use('/api/admin', require('./src/routes/adminRoutes'));
+app.use('/api/market', marketRoutes);
 
 app.get('/', (req, res) => {
     res.send('Gold Accounting API is running...');
