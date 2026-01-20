@@ -1,6 +1,7 @@
 {
     "build_command": "npm install && npm run build:h5",
-    "static": {
-        "output_dir": "dist/build/h5"
-    }
+    "start_command": "nginx -c /app/nginx.conf -g 'daemon off;'",
+    "install": [
+        "nginx"
+    ]
 }
