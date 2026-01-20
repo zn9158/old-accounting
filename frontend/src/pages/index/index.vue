@@ -4,7 +4,6 @@
     <view class="asset-card">
       <view class="card-header">
         <text class="card-title">持有总资产 (元)</text>
-        <button class="logout-btn" @click="handleLogout">退出</button>
       </view>
       <view class="total-assets">
         <text class="currency">¥</text>
@@ -70,11 +69,9 @@
       <view v-if="recentRecords.length === 0" class="empty-tip">
           暂无记录，快去记一笔吧
       </view>
-    </view>
-
-    <!-- 悬浮添加按钮 -->
-    <view class="fab-btn" @click="goToAdd">
-      <text class="plus">+</text>
+      <view v-if="records.length > 3" class="view-more" @click="goToRecords">
+        查看更多 ›
+      </view>
     </view>
   </view>
 </template>
@@ -111,7 +108,7 @@ const totalProfit = computed(() => {
 });
 
 const recentRecords = computed(() => {
-  return records.value.slice(0, 5); // 只显示最近5条
+  return records.value.slice(0, 3); // 只显示最近3条
 });
 
 // Methods
@@ -161,6 +158,10 @@ const goToAdd = () => {
 
 const goToHistory = () => {
   uni.showToast({ title: '更多记录页面待开发', icon: 'none' });
+};
+
+const goToRecords = () => {
+  uni.switchTab({ url: '/pages/records/records' });
 };
 
 const handleLogout = () => {
@@ -503,30 +504,15 @@ $gradient-black: linear-gradient(135deg, #2C2C2C 0%, #1A1A1A 100%);
     font-size: 14px;
 }
 
-/* 悬浮按钮 */
-.fab-btn {
-  position: fixed;
-  right: 20px;
-  bottom: 30px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: $gradient-gold;
-  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
-  transition: transform 0.1s;
-
+.view-more {
+  text-align: center;
+  padding: 16px;
+  color: $primary-gold;
+  font-size: 14px;
+  cursor: pointer;
+  
   &:active {
-    transform: scale(0.95);
-  }
-
-  .plus {
-    font-size: 32px;
-    color: #FFF;
-    margin-top: -4px;
+    opacity: 0.7;
   }
 }
 </style>
