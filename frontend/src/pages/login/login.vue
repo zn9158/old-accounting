@@ -130,28 +130,15 @@ const handleSubmit = async () => {
 .input {
   width: 100%;
   height: 44px;
-  .input-item {
-    margin-bottom: 30px;
-    border-bottom: 1px solid #E0E0E0;
-    padding-bottom: 8px;
-    
-    .label {
-      font-size: 14px;
-      color: $text-light;
-      margin-bottom: 10px;
-      display: block;
-    }
-    
-    .input {
-        font-size: 16px;
-        color: $text-main;
-        height: 40px;
-    }
-  }
+  padding: 0 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
 }
 
-.btn-login {
-  background: $gradient-gold;
+.btn-primary {
+  width: 100%;
+  background: linear-gradient(135deg, #EEDC82 0%, #D4AF37 100%);
   color: #fff;
   border-radius: 30px;
   height: 50px;
@@ -160,6 +147,7 @@ const handleSubmit = async () => {
   font-size: 16px;
   box-shadow: 0 8px 16px rgba(212, 175, 55, 0.2);
   margin-top: 20px;
+  border: none;
   
   &::after { border: none; }
   
@@ -169,13 +157,14 @@ const handleSubmit = async () => {
   }
 }
 
-.toggle-type {
+.toggle-box {
   text-align: center;
   margin-top: 20px;
-  
-  .text {
-    font-size: 14px;
-    color: $primary-gold;
-  }
+  padding: 10px;
+}
+
+.toggle-text {
+  font-size: 14px;
+  color: #D4AF37;
 }
 </style>
