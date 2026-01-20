@@ -1,0 +1,4 @@
+{
+    "buildCommand": "npm install && npm run build:h5",
+    "outputDirectory": "dist/build/h5"
+}
