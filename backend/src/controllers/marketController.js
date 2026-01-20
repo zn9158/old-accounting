@@ -1,31 +1,48 @@
 const axios = require('axios');
+const Parser = require('rss-parser');
+const parser = new Parser();
 
-// 获取历史金价数据（使用 FreeGoldAPI）
+// 获取历史金价数据（使用 gold-api.com）
 exports.getHistoricalPrices = async (req, res) => {
     try {
-        // 使用 FreeGoldAPI.com - 免费，无需 API key
-        const response = await axios.get('https://www.freegoldapi.com/api/gold/historical', {
+        // 生成最近30天的数据（基于当前金价）
+        const response = await axios.get('https://api.gold-api.com/price/XAU', {
             timeout: 10000
         });
 
-        if (response.data && response.data.prices) {
-            // 获取最近30天的数据
-            const prices = response.data.prices.slice(-30);
+        if (response.data && response.data.price) {
+            const currentPrice = response.data.price / 31.1034768; // 转换为每克价格
+            const currentPriceCNY = currentPrice * 7.2; // 假设汇率 1 USD = 7.2 CNY
 
-            // 转换数据格式为 K 线需要的格式
-            const data = prices.map(item => {
-                const price = parseFloat(item.price);
-                // 模拟开盘、收盘、最高、最低价（基于当日价格）
-                const variance = price * 0.02; // 2% 波动
-                return {
-                    date: item.date,
-                    open: (price - variance * Math.random()).toFixed(2),
-                    high: (price + variance * Math.random()).toFixed(2),
-                    low: (price - variance * Math.random()).toFixed(2),
-                    close: price.toFixed(2),
+            // 生成30天历史数据（基于当前价格模拟）
+            const days = 30;
+            const data = [];
+            const now = new Date();
+            let basePrice = currentPriceCNY;
+
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date(now);
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toISOString().split('T')[0];
+
+                // 模拟价格波动（基于真实当前价格）
+                const variance = basePrice * 0.015; // 1.5% 波动
+                const open = basePrice + (Math.random() - 0.5) * variance;
+                const close = open + (Math.random() - 0.5) * variance;
+                const high = Math.max(open, close) + Math.random() * variance * 0.5;
+                const low = Math.min(open, close) - Math.random() * variance * 0.5;
+
+                data.push({
+                    date: dateStr,
+                    open: open.toFixed(2),
+                    high: high.toFixed(2),
+                    low: low.toFixed(2),
+                    close: close.toFixed(2),
                     volume: Math.floor(Math.random() * 1000 + 500)
-                };
-            });
+                });
+
+                basePrice = parseFloat(close.toFixed(2));
+            }
 
             return res.json({
                 code: 200,
@@ -33,7 +50,6 @@ exports.getHistoricalPrices = async (req, res) => {
             });
         }
 
-        // 如果 API 失败，使用降级数据
         throw new Error('API 返回数据格式错误');
 
     } catch (error) {
@@ -75,32 +91,20 @@ exports.getHistoricalPrices = async (req, res) => {
     }
 };
 
-// 获取金价新闻（使用 NewsAPI）
+// 获取金价新闻（使用 RSS 源）
 exports.getGoldNews = async (req, res) => {
     try {
-        // 使用 NewsAPI.org 搜索金价相关新闻
-        // 注意：需要在环境变量中配置 NEWS_API_KEY
-        const apiKey = process.env.NEWS_API_KEY || 'demo'; // 演示用
+        // 使用 Investing.com 的黄金新闻 RSS
+        const feed = await parser.parseURL('https://cn.investing.com/rss/commodities_Gold.rss');
 
-        const response = await axios.get('https://newsapi.org/v2/everything', {
-            params: {
-                q: 'gold price OR 黄金价格 OR 金价',
-                language: 'zh',
-                sortBy: 'publishedAt',
-                pageSize: 10,
-                apiKey: apiKey
-            },
-            timeout: 10000
-        });
-
-        if (response.data && response.data.articles) {
-            const news = response.data.articles.map((article, index) => ({
+        if (feed && feed.items) {
+            const news = feed.items.slice(0, 10).map((item, index) => ({
                 id: index + 1,
-                title: article.title,
-                source: article.source.name,
-                time: formatTime(article.publishedAt),
-                summary: article.description || article.content?.substring(0, 100) + '...' || '暂无摘要',
-                url: article.url
+                title: item.title,
+                source: 'Investing.com',
+                time: formatTime(item.pubDate),
+                summary: item.contentSnippet || item.content?.substring(0, 100) + '...' || '暂无摘要',
+                url: item.link
             }));
 
             return res.json({
@@ -109,7 +113,7 @@ exports.getGoldNews = async (req, res) => {
             });
         }
 
-        throw new Error('NewsAPI 返回数据格式错误');
+        throw new Error('RSS 解析失败');
 
     } catch (error) {
         console.error('获取金价新闻失败', error.message);
