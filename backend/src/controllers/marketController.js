@@ -2,73 +2,122 @@ const axios = require('axios');
 const Parser = require('rss-parser');
 const parser = new Parser();
 
-// 获取历史金价数据（使用 gold-api.com）
+// 获取历史金价数据（K线）
+// 优先使用新浪财经上海金期货数据 (AU0)，降级使用模拟数据
 exports.getHistoricalPrices = async (req, res) => {
     try {
-        // 生成最近30天的数据（基于当前金价）
-        // API 返回的是实时金价 (USD/oz)
-        const response = await axios.get('https://api.gold-api.com/price/XAU', {
-            timeout: 10000
+        // 新浪财经期货 K 线接口 (AU0 = 黄金主力)
+        // 这是一个 JSON 接口，返回数组
+        const response = await axios.get('http://stock2.finance.sina.com.cn/futures/api/json.php/IndexService.getInnerFuturesDailyKLine?symbol=AU0', {
+            timeout: 8000
         });
 
-        let currentPriceCNY = 600; // 默认值
+        if (response.data && Array.isArray(response.data)) {
+            // 数据格式: ["日期", "开盘", "最高", "最低", "收盘", "成交量"]
+            // 示例: ["2026-01-21", "1063.000", "1092.200", "1060.100", "1089.540", "123456"]
 
-        if (response.data && response.data.price) {
-            const priceUSD = response.data.price;
-            // 1盎司 = 31.1035克
-            // 假设汇率 1 USD = 7.2 CNY
-            // 计算每克人民币价格
-            currentPriceCNY = (priceUSD / 31.1034768) * 7.2;
-        }
+            // 取最近 30 天
+            let klineData = response.data.slice(-30);
 
-        // 生成30天历史数据（基于当前价格模拟，因为没有免费的历史K线API）
-        const days = 30;
-        const data = [];
-        const now = new Date();
-        let basePrice = currentPriceCNY;
-
-        for (let i = days - 1; i >= 0; i--) {
-            const date = new Date(now);
-            date.setDate(date.getDate() - i);
-            const dateStr = date.toISOString().split('T')[0];
-
-            // 模拟价格波动
-            // 越久远的数据波动越大，最近的数据接近当前价
-            const variance = basePrice * 0.02; // 2% 波动
-
-            // 随机生成开盘价（基于前一天收盘价或基准价）
-            const open = basePrice + (Math.random() - 0.5) * variance;
-            const close = open + (Math.random() - 0.5) * variance;
-            const high = Math.max(open, close) + Math.random() * variance * 0.5;
-            const low = Math.min(open, close) - Math.random() * variance * 0.5;
-
-            data.push({
-                date: dateStr,
-                open: open.toFixed(2),
-                high: high.toFixed(2),
-                low: low.toFixed(2),
-                close: close.toFixed(2),
-                volume: Math.floor(Math.random() * 1000 + 500)
+            const data = klineData.map(item => {
+                return {
+                    date: item[0],
+                    open: parseFloat(item[1]).toFixed(2),
+                    high: parseFloat(item[2]).toFixed(2),
+                    low: parseFloat(item[3]).toFixed(2),
+                    close: parseFloat(item[4]).toFixed(2),
+                    volume: parseInt(item[5])
+                };
             });
 
-            // 更新基准价，制造趋势
-            basePrice = parseFloat(close.toFixed(2));
+            return res.json({
+                code: 200,
+                data: data,
+                source: '上海黄金交易所 (Sina)'
+            });
         }
 
-        return res.json({
-            code: 200,
-            data: data
-        });
+        throw new Error('Sina API 数据格式错误');
 
     } catch (error) {
-        console.error('获取历史金价失败', error.message);
-        // 使用模拟数据
-        res.json({
-            code: 200,
-            data: generateMockData(),
-            source: '模拟数据'
-        });
+        console.error('获取历史金价失败 (Sina), 尝试降级方案:', error.message);
+        return useMockKlineData(res);
     }
+};
+
+// 获取实时金价
+// 优先使用新浪财经 (AU0), 降级使用 Gold-API (USD -> CNY)
+exports.getGoldPrice = async (req, res) => {
+    try {
+        // 方案 1: 新浪财经上海金期货 (AU0)
+        // 需要 Referer 头以绕过 403
+        const sinaResponse = await axios.get('http://hq.sinajs.cn/list=nf_AU0', {
+            headers: { 'Referer': 'https://finance.sina.com.cn/' },
+            responseType: 'arraybuffer', // 防止中文乱码
+            timeout: 5000
+        });
+
+        // 解码 GBK (虽然这里主要只需要数字，但为了保险)
+        // 简单处理：转字符串后正则匹配
+        const sinaText = sinaResponse.data.toString();
+        // 格式: var hq_str_nf_AU0="黄金主力,time,open,high,low,last_close,bid,ask,current,..."
+        const match = sinaText.match(/="([^"]+)"/);
+
+        if (match && match[1]) {
+            const parts = match[1].split(',');
+            // 字段索引:
+            // 0:名字, 1:时间, 2:开盘, 3:最高, 4:最低, 
+            // 5:昨日结算, 6:买价, 7:卖价, 
+            // 8:最新价 (Current Price), 9:结算价...
+
+            const currentPrice = parseFloat(parts[8]);
+
+            if (currentPrice > 0) {
+                return res.json({
+                    code: 200,
+                    data: {
+                        price: currentPrice.toFixed(2),
+                        source: '上海黄金交易所 (Sina)',
+                        updateTime: new Date()
+                    }
+                });
+            }
+        }
+    } catch (e) {
+        console.warn('Sina Realtime failed, trying backup...', e.message);
+    }
+
+    // 方案 2: Gold-API (USD) -> CNY
+    try {
+        const response = await axios.get('https://api.gold-api.com/price/XAU', { timeout: 5000 });
+        if (response.data && response.data.price) {
+            const priceUSD = response.data.price;
+            // 转换: USD/oz -> CNY/g
+            // 1 oz ≈ 31.1035 g
+            const priceCNY = (priceUSD / 31.1034768) * 7.2;
+
+            return res.json({
+                code: 200,
+                data: {
+                    price: priceCNY.toFixed(2),
+                    source: '国际金价折算 (GoldAPI)',
+                    updateTime: new Date()
+                }
+            });
+        }
+    } catch (e) {
+        console.error('All price APIs failed');
+    }
+
+    // 方案 3: 模拟数据
+    res.json({
+        code: 200,
+        data: {
+            price: '600.00',
+            source: '模拟数据',
+            updateTime: new Date()
+        }
+    });
 };
 
 // 获取金价新闻（使用 Google News RSS）
@@ -109,22 +158,23 @@ exports.getGoldNews = async (req, res) => {
     }
 };
 
-// 辅助函数：生成模拟K线数据
-function generateMockData() {
+// 辅助函数：降级模拟K线
+function useMockKlineData(res) {
     const days = 30;
     const data = [];
     const now = new Date();
-    let basePrice = 480;
+    let basePrice = 600; // 默认基准
 
     for (let i = days - 1; i >= 0; i--) {
         const date = new Date(now);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
 
-        const open = basePrice + (Math.random() - 0.5) * 10;
-        const close = open + (Math.random() - 0.5) * 15;
-        const high = Math.max(open, close) + Math.random() * 5;
-        const low = Math.min(open, close) - Math.random() * 5;
+        const variance = basePrice * 0.02;
+        const open = basePrice + (Math.random() - 0.5) * variance;
+        const close = open + (Math.random() - 0.5) * variance;
+        const high = Math.max(open, close) + Math.random() * variance * 0.5;
+        const low = Math.min(open, close) - Math.random() * variance * 0.5;
 
         data.push({
             date: dateStr,
@@ -132,12 +182,17 @@ function generateMockData() {
             high: high.toFixed(2),
             low: low.toFixed(2),
             close: close.toFixed(2),
-            volume: Math.floor(Math.random() * 1000 + 500)
+            volume: 1000
         });
 
         basePrice = parseFloat(close.toFixed(2));
     }
-    return data;
+
+    res.json({
+        code: 200,
+        data: data,
+        source: '模拟数据'
+    });
 }
 
 // 辅助函数：获取模拟新闻
