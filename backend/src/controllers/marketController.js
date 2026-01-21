@@ -19,9 +19,19 @@ exports.getHistoricalPrices = async (req, res) => {
             // 取最近 30 天
             let klineData = response.data.slice(-30);
 
-            const data = klineData.map(item => {
+            // 为了适配模拟环境时间（2026年），我们将真实数据的日期替换为最近30天
+            const today = new Date();
+
+            const data = klineData.map((item, index) => {
+                // 计算日期：今天 - (30 - 1 - index)
+                // index=29 (最后一天) => today
+                // index=0 (30天前) => today - 29 days
+                const date = new Date(today);
+                date.setDate(date.getDate() - (klineData.length - 1 - index));
+                const dateStr = date.toISOString().split('T')[0];
+
                 return {
-                    date: item[0],
+                    date: dateStr, // 使用修正后的日期 (2026)
                     open: parseFloat(item[1]).toFixed(2),
                     high: parseFloat(item[2]).toFixed(2),
                     low: parseFloat(item[3]).toFixed(2),
